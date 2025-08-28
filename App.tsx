@@ -10,8 +10,8 @@ export default function App() {
     <View style={styles.container}>
       {/* This is the very first screen you see. */}
       {/* If you edit this text and save, it should refresh instantly in the emulator. */}
-      <Text style={styles.title}>Accountability Mobile</Text>
-      <Text style={styles.subtitle}>Expo + TypeScript ✅</Text>
+      <Text style={styles.title}>Accountability App Mobile</Text>
+      <Text style={styles.subtitle}>By Sudhanshu ❤️</Text>
       <StatusBar style="auto" />
     </View>
   );
