@@ -1,11 +1,10 @@
 // src/api/client.ts
-// Fetch wrapper with logs to the in-app Network Log screen.
+// Fetch wrapper that logs method/url/status and prints a cURL you can copy from the Metro console.
+// Token is masked in the cURL by default.
 
 import { API_BASE_URL } from "../config/env";
-import { logStart, logEnd, logError } from "../debug/networkLog";
 
 let AUTH_TOKEN: string | null = null;
-
 export function setAuthToken(token: string | null) {
   AUTH_TOKEN = token;
 }
@@ -13,13 +12,30 @@ export function setAuthToken(token: string | null) {
 function safeJsonParse(s: string) {
   try { return JSON.parse(s); } catch { return null; }
 }
-
 function extractErrorMessage(maybeJson: any, fallback: string) {
   if (maybeJson && typeof maybeJson === "object") {
     if (maybeJson.error) return String(maybeJson.error);
     if (maybeJson.message) return String(maybeJson.message);
   }
   return fallback || "Request failed";
+}
+
+// --- Build a cURL string (with token masked) ---
+function toCurl(method: string, url: string, headers: Record<string,string>, body?: string) {
+  const h = { ...headers };
+  if (h.Authorization) {
+    h.Authorization = h.Authorization.replace(/Bearer\s+.+/i, "Bearer <TOKEN>");
+  }
+  const parts = [`curl --location --request ${method} "${url}"`];
+  for (const [k, v] of Object.entries(h)) {
+    parts.push(`  --header "${k}: ${v}"`);
+  }
+  if (body && body.length) {
+    // Collapse whitespace for readability
+    const compact = body.replace(/\s+/g, " ").trim();
+    parts.push(`  --data-raw '${compact}'`);
+  }
+  return parts.join(" \\\n");
 }
 
 export async function apiFetch<T>(
@@ -37,40 +53,35 @@ export async function apiFetch<T>(
   };
   if (AUTH_TOKEN) headers["Authorization"] = `Bearer ${AUTH_TOKEN}`;
 
-  // Capture request body (string only; ignore FormData, etc.)
-  const requestBody =
-    typeof options.body === "string" ? options.body : undefined;
+  const bodyStr = typeof options.body === "string" ? options.body : undefined;
+  const curl = toCurl(method, url, headers, bodyStr);
 
-  const logId = logStart({ method, url, tag, requestBody: requestBody ?? null });
   const started = Date.now();
   console.log(`[api] → ${method} ${url} ${tag ? `(${tag})` : ""}`);
+  console.log(`[api] curl:\n${curl}`);
 
   try {
     const res = await fetch(url, { ...options, headers });
-    const duration = Date.now() - started;
+    const ms = Date.now() - started;
 
     const text = await res.text();
     const maybeJson = safeJsonParse(text);
 
     if (!res.ok) {
       const msg = extractErrorMessage(maybeJson, text);
-      logEnd(logId, { status: res.status, ok: false, responseText: text });
-      console.log(`[api] ← ${res.status} ${method} ${url} in ${duration}ms | error: ${msg}`);
+      console.log(`[api] ← ${res.status} ${method} ${url} in ${ms}ms | error: ${msg}`);
       const err = new Error(msg) as any;
       err.status = res.status;
       err.body = maybeJson ?? text;
       throw err;
     }
 
-    logEnd(logId, { status: res.status, ok: true, responseText: text });
-    console.log(`[api] ← ${res.status} ${method} ${url} in ${duration}ms`);
+    console.log(`[api] ← ${res.status} ${method} ${url} in ${ms}ms`);
     if (res.status === 204 || text.length === 0) return null as any;
-
     return (maybeJson as T);
   } catch (e: any) {
-    const duration = Date.now() - started;
-    logError(logId, e?.message || String(e));
-    console.log(`[api] ✖ FAIL ${method} ${url} in ${duration}ms | ${e?.message || e}`);
+    const ms = Date.now() - started;
+    console.log(`[api] ✖ FAIL ${method} ${url} in ${ms}ms | ${e?.message || e}`);
     throw e;
   }
 }
