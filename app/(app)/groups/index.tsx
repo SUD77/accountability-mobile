@@ -39,8 +39,12 @@ import { DateField } from "../../../src/ui/datePicker";
 const CreateSchema = z.object({
   name: z.string().min(3, "Min 3 characters"),
   description: z.string().optional(),
-  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use picker to select date"),
-  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use picker to select date"),
+  start_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use picker to select date"),
+  end_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use picker to select date"),
   visibility: z.enum(["public", "private"]),
 });
 type CreateForm = z.infer<typeof CreateSchema>;
@@ -72,7 +76,13 @@ function GroupCard({
         gap: 6,
       }}
     >
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <Text style={{ fontSize: 16, fontWeight: "700" }}>{g.name}</Text>
         <Text
           style={{
@@ -85,7 +95,9 @@ function GroupCard({
         </Text>
       </View>
 
-      {g.description ? <Text style={{ color: "#374151" }}>{g.description}</Text> : null}
+      {g.description ? (
+        <Text style={{ color: "#374151" }}>{g.description}</Text>
+      ) : null}
 
       {/* ✅ Alpha month, full-range format */}
       <Text style={{ fontSize: 12, color: "#6b7280" }}>
@@ -147,8 +159,14 @@ export default function GroupsHome() {
   const [showCreate, setShowCreate] = React.useState(false);
 
   // Data
-  const mineQuery = useQuery({ queryKey: ["groups", "mine"], queryFn: () => listGroups("mine") });
-  const publicQuery = useQuery({ queryKey: ["groups", "public"], queryFn: () => listGroups("public") });
+  const mineQuery = useQuery({
+    queryKey: ["groups", "mine"],
+    queryFn: () => listGroups("mine"),
+  });
+  const publicQuery = useQuery({
+    queryKey: ["groups", "public"],
+    queryFn: () => listGroups("public"),
+  });
 
   // Mutations
   const createMut = useMutation({
@@ -159,7 +177,8 @@ export default function GroupsHome() {
       Alert.alert("Created!", "Your group is ready.");
       router.push(`/(app)/groups/${g.id}`);
     },
-    onError: (e: any) => Alert.alert("Create failed", e?.message || "Unknown error"),
+    onError: (e: any) =>
+      Alert.alert("Create failed", e?.message || "Unknown error"),
   });
 
   const joinMut = useMutation({
@@ -170,7 +189,8 @@ export default function GroupsHome() {
         qc.invalidateQueries({ queryKey: ["groups", "public"] }),
       ]);
     },
-    onError: (e: any) => Alert.alert("Join failed", e?.message || "Unknown error"),
+    onError: (e: any) =>
+      Alert.alert("Join failed", e?.message || "Unknown error"),
   });
 
   const leaveMut = useMutation({
@@ -181,7 +201,8 @@ export default function GroupsHome() {
         qc.invalidateQueries({ queryKey: ["groups", "public"] }),
       ]);
     },
-    onError: (e: any) => Alert.alert("Leave failed", e?.message || "Unknown error"),
+    onError: (e: any) =>
+      Alert.alert("Leave failed", e?.message || "Unknown error"),
   });
 
   const activeList = tab === "mine" ? mineQuery : publicQuery;
@@ -202,8 +223,8 @@ export default function GroupsHome() {
           headerRight: () => (
             <Pressable
               onPress={async () => {
-                await logout();                        // clear token/session
-                router.replace("/(public)/login");     // hard navigate to login
+                await logout(); // clear token/session
+                router.replace("/(public)/login"); // hard navigate to login
               }}
               style={({ pressed }) => ({
                 backgroundColor: pressed ? "#374151" : "#111827",
@@ -230,7 +251,9 @@ export default function GroupsHome() {
 
         {tab === "mine" ? (
           <View style={{ marginTop: 10 }}>
-            <PrimaryButton onPress={() => setShowCreate(true)}>+ Create Group</PrimaryButton>
+            <PrimaryButton onPress={() => setShowCreate(true)}>
+              + Create Group
+            </PrimaryButton>
           </View>
         ) : null}
 
@@ -247,7 +270,12 @@ export default function GroupsHome() {
               renderItem={({ item }) => (
                 <GroupCard
                   g={item}
-                  onView={() => router.push(`/(app)/groups/${item.id}`)}
+                  onView={() =>
+                    router.push({
+                      pathname: "/(app)/groups/[groupId]/overview",
+                      params: { groupId: item.id }, // <- guarantees the param
+                    })
+                  }
                   canJoin={tab === "public"}
                   canLeave={tab === "mine"}
                   onJoin={() => joinMut.mutate(item.id)}
@@ -331,7 +359,9 @@ function CreateGroupModal({
         <DateField
           label="Start date"
           valueYMD={start}
-          onChangeYMD={(v) => setValue("start_date", v, { shouldValidate: true })}
+          onChangeYMD={(v) =>
+            setValue("start_date", v, { shouldValidate: true })
+          }
           maximumYMD={end}
         />
         <DateField
@@ -341,7 +371,9 @@ function CreateGroupModal({
           minimumYMD={start}
         />
       </View>
-      <ErrorText>{errors.start_date?.message || errors.end_date?.message}</ErrorText>
+      <ErrorText>
+        {errors.start_date?.message || errors.end_date?.message}
+      </ErrorText>
 
       <FieldLabel>Visibility</FieldLabel>
       <View style={{ flexDirection: "row", gap: 10 }}>
@@ -359,11 +391,17 @@ function CreateGroupModal({
 
       <View style={{ height: 8 }} />
 
-      <PrimaryButton loading={busy || isSubmitting} onPress={handleSubmit(submit)}>
+      <PrimaryButton
+        loading={busy || isSubmitting}
+        onPress={handleSubmit(submit)}
+      >
         Create
       </PrimaryButton>
       <View style={{ height: 6 }} />
-      <Pressable onPress={onClose} style={{ alignItems: "center", paddingVertical: 6 }}>
+      <Pressable
+        onPress={onClose}
+        style={{ alignItems: "center", paddingVertical: 6 }}
+      >
         <Text style={{ color: "#111827", fontWeight: "700" }}>Cancel</Text>
       </Pressable>
     </SimpleModal>
@@ -393,7 +431,9 @@ function TogglePill({
         borderRadius: 999,
       }}
     >
-      <Text style={{ color: active ? "#fff" : "#111827", fontWeight: "700" }}>{label}</Text>
+      <Text style={{ color: active ? "#fff" : "#111827", fontWeight: "700" }}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
